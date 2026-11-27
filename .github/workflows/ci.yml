@@ -760,14 +760,24 @@ jobs:
       - name: Install cargo-fuzz
         run: cargo install cargo-fuzz --locked
 
+      # The workspace [profile.release] sets lto=true/strip=symbols for the
+      # wasm build; fat LTO internalizes the __sancov_gen_* symbols that
+      # libFuzzer's sanitizer coverage needs, so the link fails. Override the
+      # profile just for the fuzz build via cargo config env vars.
       - name: Run ${{ matrix.target }} fuzz target (PR – short bounds)
         if: github.event_name == 'pull_request'
         working-directory: neurowealth-vault
+        env:
+          CARGO_PROFILE_RELEASE_LTO: "false"
+          CARGO_PROFILE_RELEASE_STRIP: "none"
         run: cargo fuzz run ${{ matrix.target }} -- -runs=1000 -max_total_time=120
 
       - name: Run ${{ matrix.target }} fuzz target (scheduled – full bounds)
         if: github.event_name == 'schedule'
         working-directory: neurowealth-vault
+        env:
+          CARGO_PROFILE_RELEASE_LTO: "false"
+          CARGO_PROFILE_RELEASE_STRIP: "none"
         run: cargo fuzz run ${{ matrix.target }} -- -runs=5000 -max_total_time=300
 
   # Withdrawal-queue share accounting (#777). Fuzzes the pure share-math
